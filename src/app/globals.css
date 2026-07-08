@@ -3,40 +3,106 @@
 @tailwind utilities;
 
 body {
-  margin: 0;
-  padding: 0;
-  font-family: "Roboto", sans-serif;
+  background:
+    radial-gradient(circle at top, #1d3557 0%, #0b1020 45%, #02040a 100%);
+  color: #e8edf7;
+  font-family: "Georgia", "Times New Roman", serif;
 }
 
-@layer containers {
-  .root-container {
-    @apply min-h-screen bg-gradient-to-r from-blue-500 to-indigo-600 flex flex-col items-center justify-center p-4;
-  }
-  .task-container {
-    @apply bg-white shadow-lg rounded-xl p-8 w-full max-w-md;
-  }
+.root-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 3rem 1rem;
 }
 
-@layer components {
-  .header {
-    @apply text-3xl font-bold mb-6 text-center text-gray-800;
-  }
-  .input-field {
-    @apply text-black border border-gray-300 rounded-md p-3 flex-grow focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all ease-in-out duration-200 shadow-sm;
-  }
-  .button {
-    @apply bg-indigo-500 text-white px-5 py-3 rounded-full ml-3 hover:bg-indigo-600 transition-all ease-in-out duration-200 shadow-md;
-  }
-  .delete-button {
-    @apply text-red-500 hover:text-red-200 hover:bg-red-600 transition-all ease-in-out duration-200 font-semibold border border-red-500 px-2 py-1 rounded-md;
-  }
-  .edit-button {
-    @apply text-blue-500 hover:text-blue-200 hover:bg-blue-600 transition-all ease-in-out duration-200 font-semibold border border-blue-500 px-2 py-1 rounded-md mr-2;
-  }
-  .save-button {
-    @apply text-green-500 hover:text-green-200 hover:bg-green-600 transition-all ease-in-out duration-200 font-semibold border border-green-500 px-2 py-1 rounded-md mr-2;
-  }
-  .cancel-button {
-    @apply text-yellow-500 hover:text-yellow-200 hover:bg-yellow-600 transition-all ease-in-out duration-200 font-semibold border border-yellow-500 px-2 py-1 rounded-md mr-2;
-  }
+.task-container {
+  width: 100%;
+  max-width: 700px;
+  background: rgba(8, 15, 32, 0.85);
+  border: 1px solid rgba(180, 200, 255, 0.35);
+  border-radius: 18px;
+  padding: 2rem;
+  box-shadow:
+    0 0 25px rgba(90, 130, 255, 0.35),
+    inset 0 0 30px rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(10px);
+}
+
+.header {
+  text-align: center;
+  font-size: 2.5rem;
+  letter-spacing: 0.15em;
+  color: #dce7ff;
+  text-shadow: 0 0 12px #6d9eff;
+  margin-bottom: 2rem;
+}
+
+.input-field {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(180, 200, 255, 0.4);
+  color: #f4f7ff;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  outline: none;
+}
+
+.input-field::placeholder {
+  color: #9daac7;
+}
+
+.input-field:focus {
+  border-color: #9fc2ff;
+  box-shadow: 0 0 10px rgba(120, 170, 255, 0.6);
+}
+
+.edit-button,
+.save-button {
+  background: linear-gradient(135deg, #1f3f8f, #5d8cff);
+  color: white;
+  border: 1px solid #aac5ff;
+  padding: 0.6rem 1rem;
+  border-radius: 10px;
+  transition: 0.2s ease;
+}
+
+.edit-button:hover,
+.save-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 14px rgba(120, 170, 255, 0.8);
+}
+
+.delete-button,
+.cancel-button {
+  background: linear-gradient(135deg, #3a0f1f, #9e2a4f);
+  color: white;
+  border: 1px solid #ff9fba;
+  padding: 0.6rem 1rem;
+  border-radius: 10px;
+  transition: 0.2s ease;
+}
+
+.delete-button:hover,
+.cancel-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 14px rgba(255, 100, 140, 0.7);
+}
+
+li {
+  background: rgba(220, 230, 255, 0.08) !important;
+  border: 1px solid rgba(180, 200, 255, 0.25);
+  color: #eef3ff;
+}
+
+li.bg-green-100 {
+  background: rgba(70, 120, 100, 0.35) !important;
+}
+
+.text-gray-900,
+.text-gray-700 {
+  color: #eef3ff !important;
+}
+
+.text-gray-500 {
+  color: #9ba7c5 !important;
 }
