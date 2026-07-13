@@ -1,101 +1,384 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import type { Models } from "appwrite";
+import { account } from "../lib/appwrite";
+import {
+  createTask,
+  deleteTask,
+  fetchTasks,
+  updateTask,
+  type Task,
+} from "./functions";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [user, setUser] = useState<Models.User<Models.Preferences> | null>(
+    null,
+  );
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [tasks, setTasks] = useState<Task[]>([]);
+
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+  const [editingContent, setEditingContent] = useState("");
+
+  const [loading, setLoading] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const currentUser = await account.get();
+        setUser(currentUser);
+        await loadTasks();
+      } catch {
+        setUser(null);
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    checkSession();
+  }, []);
+
+  const loadTasks = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const data = await fetchTasks();
+      setTasks(data);
+    } catch {
+      setError("Unable to load tasks.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const login = async () => {
+    try {
+      setError(null);
+
+      await account.createEmailPasswordSession({
+        email,
+        password,
+      });
+
+      const currentUser = await account.get();
+      setUser(currentUser);
+
+      setEmail("");
+      setPassword("");
+
+      await loadTasks();
+    } catch {
+      setError("Login failed. Please check your email and password.");
+    }
+  };
+
+  const createAccount = async () => {
+    try {
+      setError(null);
+
+      await account.create({
+        userId: "unique()",
+        email,
+        password,
+        name,
+      });
+
+      await account.createEmailPasswordSession({
+        email,
+        password,
+      });
+
+      const currentUser = await account.get();
+
+      setUser(currentUser);
+
+      setName("");
+      setEmail("");
+      setPassword("");
+
+      await loadTasks();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Unable to create account.",
+      );
+    }
+  };
+
+  const logout = async () => {
+    try {
+      setError(null);
+
+      await account.deleteSession({
+        sessionId: "current",
+      });
+
+      setUser(null);
+      setTasks([]);
+    } catch {
+      setError("Logout failed. Please try again.");
+    }
+  };
+
+  const addTask = async () => {
+    if (title.trim() === "" || content.trim() === "") return;
+
+    try {
+      setError(null);
+
+      const newTask = await createTask(title.trim(), content.trim());
+
+      setTasks((prev) => [newTask, ...prev]);
+      setTitle("");
+      setContent("");
+    } catch {
+      setError("Unable to create task. Please try again.");
+    }
+  };
+
+  const toggleTaskCompletion = async (task: Task) => {
+    try {
+      setError(null);
+
+      const updated = await updateTask(task.$id!, {
+        completed: !task.completed,
+      });
+
+      setTasks((prev) =>
+        prev.map((t) => (t.$id === updated.$id ? updated : t)),
+      );
+    } catch {
+      setError("Unable to update task.");
+    }
+  };
+
+  const removeTask = async (documentId: string) => {
+    try {
+      setError(null);
+
+      await deleteTask(documentId);
+
+      setTasks((prev) => prev.filter((t) => t.$id !== documentId));
+    } catch {
+      setError("Unable to delete task.");
+    }
+  };
+
+  const saveTask = async (documentId: string) => {
+    try {
+      setError(null);
+
+      const updated = await updateTask(documentId, {
+        title: editingTitle.trim(),
+        content: editingContent.trim(),
+      });
+
+      setTasks((prev) =>
+        prev.map((t) => (t.$id === updated.$id ? updated : t)),
+      );
+
+      setEditingIndex(null);
+    } catch {
+      setError("Unable to save task.");
+    }
+  };
+
+  const startEditing = (index: number) => {
+    setEditingIndex(index);
+    setEditingTitle(tasks[index].title || "");
+    setEditingContent(tasks[index].content || "");
+  };
+
+  const cancelEditing = () => {
+    setEditingIndex(null);
+  };
+
+  if (authLoading) {
+    return <p>Checking login...</p>;
+  }
+
+  return (
+    <div className="root-container">
+      <div className="task-container">
+        <h1 className="header">My Tasks</h1>
+
+        {error && <p className="text-red-600 mb-4">{error}</p>}
+
+        {!user ? (
+          <div className="flex flex-col mb-6">
+            <input
+              type="text"
+              className="input-field"
+              placeholder="Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+            <input
+              type="email"
+              className="input-field mt-2"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+
+            <input
+              type="password"
+              className="input-field mt-2"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+
+            <button onClick={login} className="edit-button mt-3">
+              Login
+            </button>
+
+            <button onClick={createAccount} className="save-button mt-2">
+              Create Account
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="mb-4">
+              <p className="text-gray-700">Logged in as {user.email}</p>
+              <button onClick={logout} className="delete-button mt-2">
+                Logout
+              </button>
+            </div>
+
+            <div className="flex flex-col mb-6">
+              <input
+                type="text"
+                className="input-field"
+                placeholder="Task Title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+
+              <textarea
+                className="input-field mt-2"
+                placeholder="Task Content"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+              />
+
+              <button onClick={addTask} className="edit-button mt-2">
+                Add Task
+              </button>
+            </div>
+
+            {loading && <p>Loading tasks...</p>}
+
+            <ul className="space-y-3">
+              {tasks.map((t, index) => (
+                <li
+                  key={t.$id || index}
+                  className={`flex flex-col p-4 rounded-lg shadow-md ${
+                    t.completed ? "bg-green-100" : "bg-gray-100"
+                  } transition-all ease-in-out duration-200`}
+                >
+                  <div className="flex items-center">
+                    {editingIndex !== index && (
+                      <input
+                        type="checkbox"
+                        checked={!!t.completed}
+                        onChange={() => toggleTaskCompletion(t)}
+                        className="mr-2"
+                      />
+                    )}
+
+                    {editingIndex === index ? (
+                      <div className="flex flex-col">
+                        <input
+                          type="text"
+                          className="input-field"
+                          value={editingTitle}
+                          onChange={(e) => setEditingTitle(e.target.value)}
+                        />
+
+                        <textarea
+                          rows={4}
+                          className="input-field mt-2"
+                          value={editingContent}
+                          onChange={(e) => setEditingContent(e.target.value)}
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <h2
+                          className={`text-lg font-semibold ${
+                            t.completed
+                              ? "line-through text-gray-500"
+                              : "text-gray-900"
+                          }`}
+                        >
+                          {t.title}
+                        </h2>
+
+                        <p
+                          className={
+                            t.completed
+                              ? "line-through text-gray-500"
+                              : "text-gray-700"
+                          }
+                        >
+                          {t.content}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex mt-2">
+                    {editingIndex === index ? (
+                      <>
+                        <button
+                          onClick={() => saveTask(t.$id!)}
+                          className="save-button"
+                        >
+                          Save
+                        </button>
+
+                        <button
+                          onClick={cancelEditing}
+                          className="cancel-button ml-2"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => startEditing(index)}
+                          className="edit-button"
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          onClick={() => removeTask(t.$id!)}
+                          className="delete-button ml-2"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
     </div>
   );
 }
